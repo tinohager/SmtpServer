@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Security;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using SmtpServer;
@@ -12,8 +13,40 @@ namespace SampleApp.Examples
 {
     public static class SecureServerExample
     {
+        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName)
+        {
+            var validityPeriodInYears = 1;
+
+            using RSA rsa = RSA.Create(2048);  // 2048-Bit Key
+
+            var certificateRequest = new CertificateRequest(
+                $"CN={subjectName}",  // Common Name (CN)
+                rsa,
+                HashAlgorithmName.SHA256,  // Hash-Algorithmus
+                RSASignaturePadding.Pkcs1  // Padding Schema
+            );
+
+            certificateRequest.CertificateExtensions.Add(
+                new X509SubjectKeyIdentifierExtension(certificateRequest.PublicKey, false)
+            );
+
+            certificateRequest.CertificateExtensions.Add(
+                new X509BasicConstraintsExtension(true, false, 0, true)
+            );
+
+            DateTimeOffset notBefore = DateTimeOffset.UtcNow;
+            DateTimeOffset notAfter = notBefore.AddYears(validityPeriodInYears);
+
+            X509Certificate2 certificate = certificateRequest.CreateSelfSigned(notBefore, notAfter);
+
+            return new X509Certificate2(certificate.Export(X509ContentType.Pfx));
+        }
+
         public static void Run()
         {
+
+            var x = CreateSelfSignedCertificate("localhost");
+
             // this is important when dealing with a certificate that isnt valid
             ServicePointManager.ServerCertificateValidationCallback = IgnoreCertificateValidationFailureForTestingOnly;
 
@@ -24,8 +57,9 @@ namespace SampleApp.Examples
                 .Endpoint(builder =>
                     builder
                         .Port(9025, true)
+                        .SessionTimeout(TimeSpan.FromSeconds(5))
                         .AllowUnsecureAuthentication(false)
-                        .Certificate(CreateCertificate()))
+                        .Certificate(x))
                 .Build();
 
             var serviceProvider = new ServiceProvider();
@@ -35,6 +69,8 @@ namespace SampleApp.Examples
             server.SessionCreated += OnSessionCreated;
             
             var serverTask = server.StartAsync(cancellationTokenSource.Token);
+
+            Console.ReadLine();
 
             SampleMailClient.Send(user: "user", password: "password", useSsl: true);
 

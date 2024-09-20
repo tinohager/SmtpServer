@@ -29,9 +29,9 @@ namespace SampleApp
             //SimpleServerExample.Run();
             //CustomEndpointListenerExample.Run();
             //ServerCancellingExample.Run();
-            SessionTracingExample.Run();
+            //SessionTracingExample.Run();
             //DependencyInjectionExample.Run();
-            //SecureServerExample.Run();
+            SecureServerExample.Run();
         }
 
         static bool IgnoreCertificateValidationFailureForTestingOnly(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)

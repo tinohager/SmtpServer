@@ -135,7 +135,10 @@ namespace SmtpServer
                     // wait for a client connection
                     sessionContext.Pipe = await endpointListener.GetPipeAsync(sessionContext, cancellationTokenSource.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) { }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("sddsf");
+                }
                 catch (Exception ex)
                 {
                     OnSessionFaulted(new SessionFaultedEventArgs(sessionContext, ex));

@@ -38,11 +38,47 @@ namespace SmtpServer.IO
         /// <returns>A task that asynchronously performs the operation.</returns>
         public async Task UpgradeAsync(X509Certificate certificate, SslProtocols protocols, CancellationToken cancellationToken = default)
         {
-            var stream = new SslStream(_stream, true);
+            var sslStream = new SslStream(_stream, true);
 
-            await stream.AuthenticateAsServerAsync(certificate, false, protocols, true).ConfigureAwait(false);
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var timeoutMilliseconds = 20000;
 
-            _stream = stream;
+            Task timeoutTask = Task.Delay(timeoutMilliseconds, cancellationTokenSource.Token);
+
+            var options = new SslServerAuthenticationOptions
+            {
+                ServerCertificate = certificate,
+                ClientCertificateRequired = false,
+                EnabledSslProtocols = protocols,
+                CertificateRevocationCheckMode = X509RevocationMode.Online
+            };
+
+            Task authenticateTask = sslStream.AuthenticateAsServerAsync(certificate, false, protocols, true);
+
+            try
+            {
+                Task completedTask = await Task.WhenAny(authenticateTask, timeoutTask).ConfigureAwait(false);
+                if (completedTask == timeoutTask)
+                {
+                    // Timeout occurred
+                    throw new TimeoutException("SSL authentication timed out.");
+                }
+
+                // Cancel the timeout task
+                cancellationTokenSource.Cancel();
+
+                // Ensure the authentication task is complete (if not already)
+                await authenticateTask;
+            }
+            catch (Exception)
+            {
+                // Close the stream in case of an error or timeout
+                sslStream.Close();
+                sslStream.Dispose();
+                throw; // Re-throw the exception
+            }
+
+            _stream = sslStream;
 
             Input = PipeReader.Create(_stream);
             Output = PipeWriter.Create(_stream);

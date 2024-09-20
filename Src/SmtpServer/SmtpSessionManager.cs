@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -9,9 +10,10 @@ namespace SmtpServer
     internal sealed class SmtpSessionManager
     {
         readonly SmtpServer _smtpServer;
-        readonly HashSet<SmtpSessionHandle> _sessions = new HashSet<SmtpSessionHandle>();
-        readonly object _sessionsLock = new object();
-        
+        readonly ConcurrentDictionary<Guid, SmtpSessionHandle> _sessions = new ConcurrentDictionary<Guid, SmtpSessionHandle>();
+        //readonly object _sessionsLock = new object();
+        //readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
+
         internal SmtpSessionManager(SmtpServer smtpServer)
         {
             _smtpServer = smtpServer;
@@ -20,16 +22,14 @@ namespace SmtpServer
         internal void Run(SmtpSessionContext sessionContext, CancellationToken cancellationToken)
         {
             var handle = new SmtpSessionHandle(new SmtpSession(sessionContext), sessionContext);
+
             Add(handle);
+            var smtpSessionTask = RunAsync(handle, cancellationToken).ContinueWith(task =>
+            {
+                Remove(handle);
+            });
 
-            handle.CompletionTask = RunAsync(handle, cancellationToken);
-
-            // ReSharper disable once MethodSupportsCancellation
-            handle.CompletionTask.ContinueWith(
-                task =>
-                {
-                    Remove(handle);
-                });
+            handle.CompletionTask = smtpSessionTask;
         }
 
         async Task RunAsync(SmtpSessionHandle handle, CancellationToken cancellationToken)
@@ -80,38 +80,48 @@ namespace SmtpServer
         internal Task WaitAsync()
         {
             IReadOnlyList<Task> tasks;
-            
-            lock (_sessionsLock)
-            {
-                tasks = _sessions.Select(session => session.CompletionTask).ToList();
-            }
+
+            tasks = _sessions.Values.Select(session => session.CompletionTask).ToList();
             
             return Task.WhenAll(tasks);
         }
 
         void Add(SmtpSessionHandle handle)
         {
-            lock (_sessionsLock)
-            {
-                _sessions.Add(handle);
-            }
+            _sessions.TryAdd(handle.SessionId, handle);
         }
 
         void Remove(SmtpSessionHandle handle)
         {
-            lock (_sessionsLock)
-            {
-                _sessions.Remove(handle);
-            }
+            _sessions.TryRemove(handle.SessionId, out _);
         }
 
         class SmtpSessionHandle
         {
             public SmtpSessionHandle(SmtpSession session, SmtpSessionContext sessionContext)
             {
+                SessionId = Guid.NewGuid();
+
                 Session = session;
                 SessionContext = sessionContext;
             }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is SmtpSessionHandle other)
+                {
+                    return SessionId == other.SessionId;
+                }
+
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return SessionId.GetHashCode();
+            }
+
+            public Guid SessionId { get; }
 
             public SmtpSession Session { get; }
             
