@@ -22,6 +22,7 @@ namespace Nager.SmtpServerCore
                 MaxConcurrentSessions = 100,
                 Endpoints = new List<IEndpointDefinition>(),
                 MaxRetryCount = 5,
+                MaxRcptToCount = 10,
                 MaxAuthenticationAttempts = 3,
                 CommandWaitTimeout = TimeSpan.FromMinutes(5),
                 CustomSmtpGreeting = null,
@@ -135,6 +136,18 @@ namespace Nager.SmtpServerCore
         }
 
         /// <summary>
+        /// Sets the maximum number of recipients allowed for a single email message.
+        /// </summary>
+        /// <param name="value">The maximum number of recipients allowed for a single email message.</param>
+        /// <returns>A OptionsBuilder to continue building on.</returns>
+        public SmtpServerOptionsBuilder MaxRcptToCount(int value)
+        {
+            _setters.Add(options => options.MaxRcptToCount = value);
+
+            return this;
+        }
+
+        /// <summary>
         /// Sets the maximum number of authentication attempts.
         /// </summary>
         /// <param name="value">The maximum number of authentication attempts for a failed authentication.</param>
@@ -187,6 +200,9 @@ namespace Nager.SmtpServerCore
 
             /// <inheritdoc/>
             public int MaxRetryCount { get; set; }
+
+            /// <inheritdoc/>
+            public int MaxRcptToCount { get; set; }
 
             /// <inheritdoc/>
             public int MaxAuthenticationAttempts { get; set; }

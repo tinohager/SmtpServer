@@ -40,6 +40,12 @@ namespace Nager.SmtpServerCore.Protocol
 
             using var container = new DisposableContainer<IMailboxFilter>(mailboxFilter);
 
+            if (context.Transaction.To.Count > context.ServerOptions.MaxRcptToCount)
+            {
+                await context.Pipe.Output.WriteReplyAsync(new SmtpResponse(SmtpReplyCode.InsufficientStorage, "Too many recipients"), cancellationToken).ConfigureAwait(false);
+                return false;
+            }
+
             switch (await container.Instance.CanDeliverToAsync(context, Address, context.Transaction.From, cancellationToken).ConfigureAwait(false))
             {
                 case true:

@@ -15,7 +15,7 @@ namespace Nager.SmtpServerCore
         public void Reset()
         {
             From = null;
-            To = new Collection<IMailbox>();
+            To = new List<IMailbox>();
             Parameters = new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
         }
 
@@ -23,7 +23,7 @@ namespace Nager.SmtpServerCore
         public IMailbox From { get; set; }
 
         /// <inheritdoc />
-        public IList<IMailbox> To { get; set; } = new Collection<IMailbox>();
+        public IList<IMailbox> To { get; private set; } = new List<IMailbox>();
 
         /// <inheritdoc />
         public IReadOnlyDictionary<string, string> Parameters { get; set; } = new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());

@@ -24,6 +24,11 @@ namespace Nager.SmtpServerCore
         int MaxRetryCount { get; }
 
         /// <summary>
+        /// Gets the maximum number of recipients allowed for a single SMTP transaction.
+        /// </summary>
+        int MaxRcptToCount { get; }
+
+        /// <summary>
         /// The maximum number of authentication attempts.
         /// </summary>
         int MaxAuthenticationAttempts { get; }
