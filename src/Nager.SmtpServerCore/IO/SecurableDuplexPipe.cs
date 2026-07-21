@@ -25,7 +25,13 @@ namespace Nager.SmtpServerCore.IO
             _stream = stream;
             _disposeAction = disposeAction;
 
-            Input = PipeReader.Create(_stream);
+            const int InputBufferSize = 16 * 1024;
+
+            var streamPipeReaderOptions = new StreamPipeReaderOptions(
+                bufferSize: InputBufferSize,
+                minimumReadSize: 1024);
+
+            Input = PipeReader.Create(_stream, streamPipeReaderOptions);
             Output = PipeWriter.Create(_stream);
         }
 
