@@ -47,14 +47,6 @@ namespace Nager.SmtpServerCore.Text
             }
         }
 
-        internal static string Create(ref ReadOnlySpan<byte> buffer)
-        {
-            return Create(ref buffer, Encoding.ASCII);
-        }
 
-        internal static string Create(ref ReadOnlySpan<byte> buffer, Encoding encoding)
-        {
-            return encoding.GetString(buffer);
-        }
     }
 }
